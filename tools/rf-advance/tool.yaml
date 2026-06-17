@@ -1,0 +1,15 @@
+name: "rf-advance"
+description: "推进工作流状态机。根据检查结果（通过/失败）自动路由到下一步骤，处理失败计数、暂停和完成逻辑。当 rf-detect 检测到标记后，可调用此工具显式推进状态。"
+parameters:
+  type: object
+  properties:
+    result:
+      type: string
+      enum: [pass, fail]
+      description: "检查结果：pass 或 fail"
+    reason:
+      type: string
+      description: "通过或失败的原因"
+  required:
+    - result
+runner: python

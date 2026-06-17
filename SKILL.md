@@ -10,6 +10,8 @@ custom-tools:
   - "rf-cancel"
   - "rf-list"
   - "rf-detect"
+  - "rf-check"
+  - "rf-advance"
 ---
 
 # Ralph Flow - 工作流自动化执行引擎
@@ -40,12 +42,14 @@ custom-tools:
 
 | 工具 | 功能 |
 |------|------|
-| `rf-start` | 启动工作流 |
-| `rf-status` | 查看当前状态 |
-| `rf-continue` | 恢复暂停的工作流 |
-| `rf-cancel` | 取消工作流 |
+| `rf-start` | 启动工作流（支持子工作流、session 跟踪） |
+| `rf-status` | 查看当前状态（含步骤详情、子工作流深度） |
+| `rf-continue` | 恢复暂停的工作流（含失败上下文） |
+| `rf-cancel` | 取消工作流（生成取消报告） |
 | `rf-list` | 列出可用工作流 |
-| `rf-detect` | 检测工作流标记（done/check）|
+| `rf-detect` | 检测工作流标记并自动推进状态 |
+| `rf-check` | 生成对抗性检查提示（供独立子 agent 使用） |
+| `rf-advance` | 显式推进状态机（pass/fail 路由） |
 
 ## 工作流程
 
@@ -66,26 +70,39 @@ custom-tools:
 
 ### 3. 执行 CHECK 阶段
 
-1. 使用 Task 工具创建一个**独立的子 agent** 进行验证
-2. 子 agent 没有执行过程的记忆，严格按照标准判断
-3. 子 agent 输出验证结果和 `<promise-check>true/false</promise-check>`
-4. 使用 `rf-detect` 工具检测验证结果
-5. 根据结果决定下一步：
+1. 使用 `rf-check` 工具获取对抗性检查提示（system_prompt + check_prompt）
+2. 使用 Task 工具创建一个**独立的子 agent**：
+   - 将 `system_prompt` 作为子 agent 的系统提示
+   - 将 `check_prompt` 作为子 agent 的用户消息
+3. 子 agent 没有执行过程的记忆，严格按照标准判断
+4. 子 agent 输出验证结果和 `<promise-check>true/false</promise-check>`
+5. 使用 `rf-detect` 工具检测验证结果（自动推进状态）
+6. 或使用 `rf-advance` 工具显式推进（传入 result: pass/fail）
+7. 根据结果决定下一步：
    - 通过：进入下一步骤或完成
    - 不通过：携带失败原因重新执行 DO 阶段
 
-### 4. 标记检测
+### 4. 标记检测与自动推进
 
-使用 `rf-detect` 工具检测工作流标记：
+使用 `rf-detect` 工具检测工作流标记，**检测到标记后会自动推进状态**：
 
 ```json
-// 检测 DO 阶段完成标记
+// 检测 DO 阶段完成标记 → 自动进入 CHECK 阶段
 {"text": "任务已完成\n<promise>done</promise>"}
-// 返回: {"done_detected": true, ...}
+// 返回: {"done_detected": true, "state_transition": {"from_phase": "do", "to_phase": "check"}, "suggestion": "请调用 rf-check..."}
 
-// 检测 CHECK 阶段结果标记
+// 检测 CHECK 阶段结果标记 → 自动路由到下一步骤
 {"text": "检查通过\n<promise-check>true</promise-check>"}
-// 返回: {"check_result": {"found": true, "passed": true, ...}}
+// 返回: {"check_result": {"found": true, "passed": true}, "state_transition": {"action": "next_step", "step_id": "...", "do_prompt": "..."}}
+```
+
+也可以使用 `rf-advance` 工具显式推进状态机（不需要检测文本）：
+
+```json
+// 检查通过
+{"result": "pass", "reason": "所有检查点通过"}
+// 检查失败
+{"result": "fail", "reason": "测试未通过"}
 ```
 
 ### 5. 处理失败
@@ -94,8 +111,29 @@ custom-tools:
 2. 增加失败计数
 3. 如果未超过 `max_fail_count`，携带失败上下文重试
 4. 如果超过限制，暂停工作流并通知用户
+5. 子工作流失败会冒泡到父工作流处理
 
-### 5. 完成工作流
+### 6. 子工作流
+
+步骤可以引用另一个工作流作为子工作流：
+
+```yaml
+steps:
+  - id: sub_task
+    desc: 子任务
+    workflow: loop  # 引用 loop 工作流
+    inputs:
+      目标: 完成子任务
+    on_pass: next_step
+    on_fail: sub_task
+```
+
+- 子工作流有独立的状态，父状态被压入状态栈
+- 子工作流完成后自动恢复父工作流
+- 最大嵌套深度为 5 层
+- 子工作流失败会冒泡到父步骤处理
+
+### 7. 完成工作流
 
 1. 所有步骤通过验证
 2. 生成完成报告
@@ -129,6 +167,11 @@ custom-tools:
 ```yaml
 description: 工作流描述
 
+adversarial_check:
+  enabled: true
+  timeout_ms: 900000  # 15 分钟超时
+  # system_prompt: 自定义检查系统提示（可选）
+
 steps:
   - id: step1
     desc: 步骤描述
@@ -147,6 +190,15 @@ steps:
     on_pass: done  # 完成工作流
     on_fail: step2
     max_fail_count: 5
+
+  # 子工作流步骤
+  - id: sub_task
+    desc: 子任务
+    workflow: loop  # 引用其他工作流
+    inputs:
+      目标: 子任务描述
+    on_pass: next_step
+    on_fail: sub_task
 ```
 
 ## 状态文件
@@ -162,9 +214,26 @@ steps:
   "fail_count": 0,
   "user_task": "用户任务描述",
   "paused": false,
-  "last_failure_reason": null
+  "last_failure_reason": null,
+  "start_time": "2026-01-01T00:00:00",
+  "session_id": "可选的会话ID",
+  "parent": {
+    "workflow_name": "spec",
+    "step_id": "implement"
+  }
 }
 ```
+
+状态栈保存在 `.trae/ralph-flow/state_stack.json`（子工作流使用）。
+
+## 日志与报告
+
+- **执行日志**：`.trae/ralph-flow/logs/execution.log`（JSON 格式结构化日志）
+- **步骤日志**：`.trae/ralph-flow/logs/step_<id>.log`（每个步骤的详细日志）
+- **步骤记录**：`.trae/ralph-flow/step_records.json`（步骤执行历史）
+- **完成报告**：`.trae/ralph-flow/reports/report_<timestamp>.md`
+- **暂停报告**：`.trae/ralph-flow/reports/pause_report_<timestamp>.md`
+- **取消报告**：`.trae/ralph-flow/reports/cancel_report_<timestamp>.md`
 
 ## 重要规则
 

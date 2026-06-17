@@ -1,5 +1,9 @@
 description: 完整的需求分析、规格定义、技术设计、代码实现工作流
 
+adversarial_check:
+  enabled: true
+  timeout_ms: 900000
+
 steps:
   - id: propose
     desc: 需求分析与方案提议

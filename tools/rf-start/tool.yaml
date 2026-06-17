@@ -1,5 +1,5 @@
 name: "rf-start"
-description: "启动工作流。需要指定工作流名称和任务描述。返回工作流初始状态和第一步指令。"
+description: "启动工作流。需要指定工作流名称和任务描述。支持子工作流（workflow 字段）、session 跟踪、自动清理。返回工作流初始状态和第一步的 DO 阶段提示。"
 parameters:
   type: object
   properties:
@@ -9,6 +9,9 @@ parameters:
     task:
       type: string
       description: "任务描述"
+    session_id:
+      type: string
+      description: "会话 ID（可选，用于跟踪工作流所属会话）"
   required:
     - workflow
     - task

@@ -1,0 +1,9 @@
+name: "rf-check"
+description: "生成对抗性检查提示。读取当前步骤的检查标准，生成供独立子 agent 使用的验证提示。在 CHECK 阶段调用此工具获取提示，然后将提示传给 Task 子 agent 执行验证。"
+parameters:
+  type: object
+  properties:
+    user_task:
+      type: string
+      description: "用户任务描述（可选，覆盖状态中的任务）"
+runner: python

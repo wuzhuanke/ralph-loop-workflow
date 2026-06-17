@@ -1,6 +1,9 @@
 name: "rf-continue"
-description: "恢复已暂停的工作流。重置失败计数器并从当前步骤继续执行。"
+description: "恢复已暂停的工作流。重置失败计数器并从当前步骤继续执行，返回 DO 阶段提示和失败上下文。"
 parameters:
   type: object
-  properties: {}
+  properties:
+    session_id:
+      type: string
+      description: "会话 ID（可选，用于验证工作流所属会话）"
 runner: python

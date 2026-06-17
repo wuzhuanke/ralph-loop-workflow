@@ -1,5 +1,5 @@
 name: "rf-detect"
-description: "检测工作流标记。检测文本中是否包含 <promise>done</promise> 或 <promise-check>true/false</promise-check> 标记。"
+description: "检测工作流标记并自动推进状态。检测文本中的 <promise>done</promise> 或 <promise-check>true/false</promise-check> 标记，检测到后自动更新工作流状态：done 标记触发进入 CHECK 阶段，check 标记触发路由到下一步骤。"
 parameters:
   type: object
   properties:

@@ -1,5 +1,5 @@
 name: "rf-status"
-description: "查看当前工作流状态。返回工作流名称、当前步骤、阶段、失败次数等信息。"
+description: "查看工作流状态。返回当前步骤、阶段、失败计数、步骤详情、子工作流深度等完整信息。"
 parameters:
   type: object
   properties: {}

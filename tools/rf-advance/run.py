@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-rf-detect tool - Detect workflow tags and auto-advance state.
-When done tag detected: transitions to CHECK phase.
-When check tag detected: routes based on result (on_pass/on_fail).
+rf-advance tool - Advance workflow state machine.
+Routes to next step based on check result (pass/fail),
+handles fail count, pause, completion, and sub-workflow resume.
 """
 import json
 import sys
@@ -18,11 +18,9 @@ from rf_lib.state import (
     pop_state, get_stack_depth
 )
 from rf_lib.workflow import load_workflow, get_step, is_sub_workflow_step
-from rf_lib.tags import detect_done_tag, detect_check_tag
 from rf_lib.logging import (
-    log_done_detected, log_check_result, log_fail_count_increment,
-    log_workflow_paused, log_workflow_end, log_step_start,
-    log_error, log_info, log_debug
+    log_check_result, log_fail_count_increment, log_workflow_paused,
+    log_workflow_end, log_step_start, log_error, log_info
 )
 from rf_lib.report import (
     create_step_record, append_step_record, read_step_records,
@@ -33,7 +31,7 @@ MAX_NESTING_DEPTH = 5
 
 
 def _build_do_prompt(step: dict, user_task: str = "", retry_context: str = "", retry_count: int = 0) -> str:
-    """Build the DO phase prompt for a step."""
+    """Build the DO phase prompt for a step (same logic as original)."""
     sections = []
     is_retry = bool(retry_context) or retry_count > 0
 
@@ -87,7 +85,7 @@ def _build_do_prompt(step: dict, user_task: str = "", retry_context: str = "", r
 
 
 def _handle_sub_workflow_entry(skill_dir: Path, state: dict, step: dict) -> dict:
-    """Handle entering a sub-workflow."""
+    """Handle entering a sub-workflow. Returns result dict."""
     current_depth = get_stack_depth(skill_dir)
 
     if current_depth >= MAX_NESTING_DEPTH:
@@ -152,14 +150,17 @@ def _handle_sub_workflow_entry(skill_dir: Path, state: dict, step: dict) -> dict
         'depth': current_depth + 1
     })
 
+    # Check if first step is also a sub-workflow
     if is_sub_workflow_step(first_step):
-        return _handle_sub_workflow_entry(skill_dir, sub_state, first_step)
+        nested_result = _handle_sub_workflow_entry(skill_dir, sub_state, first_step)
+        if 'error' in nested_result:
+            return nested_result
 
     return {
         'action': 'enter_sub_workflow',
         'sub_workflow': sub_workflow_name,
         'first_step': first_step.get('id', 'unknown'),
-        'do_prompt': _build_do_prompt(first_step, sub_user_task),
+        'do_prompt': _build_do_prompt(first_step, sub_user_task) if not is_sub_workflow_step(first_step) else None,
         'depth': current_depth + 1
     }
 
@@ -255,201 +256,160 @@ def main():
     skill_dir = get_skill_dir(__file__)
 
     # Read input
-    input_data = json.load(sys.stdin)
-    text = input_data.get('text', '')
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        input_data = {}
 
-    # Detect tags
-    done_detected = detect_done_tag(text)
-    check_result = detect_check_tag(text)
+    result_str = input_data.get('result', '')
+    reason = input_data.get('reason', '')
 
-    result = {
-        "done_detected": done_detected,
-        "check_result": check_result
-    }
+    if result_str not in ('pass', 'fail'):
+        print(json.dumps({'error': "Parameter 'result' must be 'pass' or 'fail'."}, ensure_ascii=False))
+        return
 
-    # Read state for auto-advance
+    passed = result_str == 'pass'
+
+    # Read state
     state = read_state(skill_dir)
-    if not state or not state.get('active', False):
-        # No active workflow, just return detection results
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+    if not state:
+        print(json.dumps({'error': 'No workflow state found.'}, ensure_ascii=False))
+        return
+
+    if not state.get('active', False):
+        print(json.dumps({'error': 'No active workflow.'}, ensure_ascii=False))
         return
 
     workflow_name = state.get('workflow_name', '')
     current_step_id = state.get('current_step', '')
-    current_phase = state.get('current_phase', 'do')
     fail_count = state.get('fail_count', 0)
-    user_task = state.get('user_task', '')
 
     # Load workflow
     workflow = load_workflow(skill_dir, workflow_name)
+    if not workflow:
+        print(json.dumps({'error': f"Workflow '{workflow_name}' not found."}, ensure_ascii=False))
+        return
 
-    # --- Auto-advance: done tag detected in DO phase ---
-    if done_detected and current_phase == 'do':
-        log_done_detected(skill_dir, current_step_id)
+    step = get_step(workflow, current_step_id)
+    if not step:
+        print(json.dumps({'error': f"Step '{current_step_id}' not found."}, ensure_ascii=False))
+        return
 
-        # Create DO step record
-        do_record = create_step_record(current_step_id, 'do', 'passed', fail_count)
-        append_step_record(skill_dir, do_record)
+    # Log check result
+    log_check_result(skill_dir, current_step_id, passed)
 
-        # Transition to CHECK phase
-        state['current_phase'] = 'check'
-        write_state(skill_dir, state)
+    # Create step record
+    check_fail_count = fail_count if passed else fail_count + 1
+    record = create_step_record(
+        current_step_id, 'check',
+        'passed' if passed else 'failed',
+        check_fail_count, reason
+    )
+    append_step_record(skill_dir, record)
 
-        log_step_start(skill_dir, current_step_id, 'check')
-
-        result['state_transition'] = {
-            'from_phase': 'do',
-            'to_phase': 'check'
-        }
-        result['suggestion'] = (
-            'DO 阶段完成，已自动进入 CHECK 阶段。'
-            '请调用 rf-check 获取对抗性检查提示，然后将提示传给 Task 子 agent 执行验证。'
-        )
-
-    # --- Auto-advance: check tag detected in CHECK phase ---
-    elif check_result.get('found') and current_phase == 'check':
-        passed = check_result['passed']
-        reason = check_result.get('reason', '')
-
-        log_check_result(skill_dir, current_step_id, passed)
-
-        # Create CHECK step record
-        check_fail_count = fail_count if passed else fail_count + 1
-        check_record = create_step_record(
-            current_step_id, 'check',
-            'passed' if passed else 'failed',
-            check_fail_count, reason
-        )
-        append_step_record(skill_dir, check_record)
-
-        if not workflow:
-            result['error'] = f"Workflow '{workflow_name}' not found."
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-            return
-
-        step = get_step(workflow, current_step_id)
-        if not step:
-            result['error'] = f"Step '{current_step_id}' not found."
-            print(json.dumps(result, ensure_ascii=False, indent=2))
-            return
-
-        if passed:
-            # --- Check passed ---
-            if step.get('on_pass') == 'done':
-                # Check if we're in a sub-workflow
-                parent_state = pop_state(skill_dir)
-                if parent_state:
-                    resume_result = _handle_resume_parent(skill_dir, parent_state, True)
-                    result['state_transition'] = resume_result
-                else:
-                    mark_completed(skill_dir, state)
-                    log_workflow_end(skill_dir, workflow_name)
-                    report_path = generate_completion_report(skill_dir, workflow_name)
-                    result['state_transition'] = {
-                        'action': 'completed',
-                        'workflow': workflow_name,
-                        'report': str(report_path)
-                    }
+    # Route based on result
+    if passed:
+        if step.get('on_pass') == 'done':
+            # Check if we're in a sub-workflow
+            parent_state = pop_state(skill_dir)
+            if parent_state:
+                resume_result = _handle_resume_parent(skill_dir, parent_state, True)
+                print(json.dumps(resume_result, ensure_ascii=False, indent=2))
             else:
-                next_step = get_step(workflow, step.get('on_pass', ''))
-                if next_step:
-                    if is_sub_workflow_step(next_step):
-                        updated_state = {
-                            **state,
-                            'current_step': next_step.get('id'),
-                            'current_phase': 'do',
-                            'fail_count': 0,
-                            'last_failure_reason': None,
-                        }
-                        write_state(skill_dir, updated_state)
-                        sub_result = _handle_sub_workflow_entry(skill_dir, updated_state, next_step)
-                        result['state_transition'] = sub_result
-                    else:
-                        updated_state = {
-                            **state,
-                            'current_step': next_step.get('id'),
-                            'current_phase': 'do',
-                            'fail_count': 0,
-                            'last_failure_reason': None,
-                        }
-                        write_state(skill_dir, updated_state)
-                        log_step_start(skill_dir, next_step.get('id'), 'do')
-                        do_prompt = _build_do_prompt(next_step, user_task)
-                        result['state_transition'] = {
-                            'action': 'next_step',
-                            'step_id': next_step.get('id'),
-                            'do_prompt': do_prompt
-                        }
-                else:
-                    result['error'] = f"Next step '{step.get('on_pass')}' not found."
+                mark_completed(skill_dir, state)
+                log_workflow_end(skill_dir, workflow_name)
+                report_path = generate_completion_report(skill_dir, workflow_name)
+                print(json.dumps({
+                    'action': 'completed',
+                    'workflow': workflow_name,
+                    'report': str(report_path)
+                }, ensure_ascii=False, indent=2))
         else:
-            # --- Check failed ---
-            new_fail_count = fail_count + 1
-            log_fail_count_increment(skill_dir, current_step_id, new_fail_count)
+            next_step = get_step(workflow, step.get('on_pass', ''))
+            if next_step:
+                updated_state = {
+                    **state,
+                    'current_step': next_step.get('id'),
+                    'current_phase': 'do',
+                    'fail_count': 0,
+                    'last_failure_reason': None,
+                }
+                write_state(skill_dir, updated_state)
+                log_step_start(skill_dir, next_step.get('id'), 'do')
 
-            if new_fail_count >= step.get('max_fail_count', 5):
-                # Check if we're in a sub-workflow
-                parent_state = pop_state(skill_dir)
-                if parent_state:
-                    resume_result = _handle_resume_parent(skill_dir, parent_state, False, reason)
-                    result['state_transition'] = resume_result
+                if is_sub_workflow_step(next_step):
+                    result = _handle_sub_workflow_entry(skill_dir, updated_state, next_step)
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
                 else:
-                    mark_paused(skill_dir, {**state, 'fail_count': new_fail_count, 'last_failure_reason': reason})
-                    log_workflow_paused(skill_dir, workflow_name, current_step_id, new_fail_count)
-                    generate_pause_report(skill_dir, workflow_name)
-                    result['state_transition'] = {
-                        'action': 'paused',
-                        'step_id': current_step_id,
-                        'fail_count': new_fail_count,
-                        'max_fail_count': step.get('max_fail_count', 5),
-                        'reason': reason,
-                        'message': (
-                            f"步骤 `{current_step_id}` 检查失败，已失败 {new_fail_count}/{step.get('max_fail_count', 5)} 次。\n\n"
-                            f"### 失败原因\n{reason or '未知'}\n\n"
-                            f"### 后续操作\n"
-                            f"1. 查看上面的失败原因并修复问题\n"
-                            f"2. 运行 `rf-continue` 从当前步骤重试\n"
-                            f"3. 运行 `rf-cancel` 取消工作流"
-                        )
-                    }
+                    do_prompt = _build_do_prompt(next_step, state.get('user_task', ''))
+                    print(json.dumps({
+                        'action': 'next_step',
+                        'step_id': next_step.get('id'),
+                        'do_prompt': do_prompt
+                    }, ensure_ascii=False, indent=2))
             else:
-                next_step_id = step.get('on_fail', current_step_id)
-                next_step = get_step(workflow, next_step_id)
-                if next_step:
-                    if is_sub_workflow_step(next_step):
-                        updated_state = {
-                            **state,
-                            'current_step': next_step.get('id'),
-                            'current_phase': 'do',
-                            'fail_count': new_fail_count,
-                            'last_failure_reason': reason,
-                        }
-                        write_state(skill_dir, updated_state)
-                        sub_result = _handle_sub_workflow_entry(skill_dir, updated_state, next_step)
-                        result['state_transition'] = sub_result
-                    else:
-                        updated_state = {
-                            **state,
-                            'current_step': next_step.get('id'),
-                            'current_phase': 'do',
-                            'fail_count': new_fail_count,
-                            'last_failure_reason': reason,
-                        }
-                        write_state(skill_dir, updated_state)
-                        log_step_start(skill_dir, next_step.get('id'), 'do')
-                        do_prompt = _build_do_prompt(
-                            next_step, user_task, reason, new_fail_count
-                        )
-                        result['state_transition'] = {
-                            'action': 'next_step',
-                            'step_id': next_step.get('id'),
-                            'do_prompt': do_prompt,
-                            'fail_count': new_fail_count
-                        }
-                else:
-                    result['error'] = f"Next step '{next_step_id}' not found."
+                print(json.dumps({'error': f"Next step '{step.get('on_pass')}' not found."}, ensure_ascii=False))
+    else:
+        new_fail_count = fail_count + 1
+        log_fail_count_increment(skill_dir, current_step_id, new_fail_count)
 
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+        if new_fail_count >= step.get('max_fail_count', 5):
+            # Check if we're in a sub-workflow
+            parent_state = pop_state(skill_dir)
+            if parent_state:
+                resume_result = _handle_resume_parent(skill_dir, parent_state, False, reason)
+                print(json.dumps(resume_result, ensure_ascii=False, indent=2))
+            else:
+                mark_paused(skill_dir, {**state, 'fail_count': new_fail_count, 'last_failure_reason': reason})
+                log_workflow_paused(skill_dir, workflow_name, current_step_id, new_fail_count)
+                generate_pause_report(skill_dir, workflow_name)
+                print(json.dumps({
+                    'action': 'paused',
+                    'step_id': current_step_id,
+                    'fail_count': new_fail_count,
+                    'max_fail_count': step.get('max_fail_count', 5),
+                    'reason': reason,
+                    'message': (
+                        f"步骤 `{current_step_id}` 检查失败，已失败 {new_fail_count}/{step.get('max_fail_count', 5)} 次。\n\n"
+                        f"### 失败原因\n{reason or '未知'}\n\n"
+                        f"### 后续操作\n"
+                        f"1. 查看上面的失败原因并修复问题\n"
+                        f"2. 运行 `rf-continue` 从当前步骤重试\n"
+                        f"3. 运行 `rf-cancel` 取消工作流"
+                    )
+                }, ensure_ascii=False, indent=2))
+        else:
+            next_step_id = step.get('on_fail', current_step_id)
+            next_step = get_step(workflow, next_step_id)
+            if next_step:
+                updated_state = {
+                    **state,
+                    'current_step': next_step.get('id'),
+                    'current_phase': 'do',
+                    'fail_count': new_fail_count,
+                    'last_failure_reason': reason,
+                }
+                write_state(skill_dir, updated_state)
+                log_step_start(skill_dir, next_step.get('id'), 'do')
+
+                if is_sub_workflow_step(next_step):
+                    result = _handle_sub_workflow_entry(skill_dir, updated_state, next_step)
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
+                else:
+                    do_prompt = _build_do_prompt(
+                        next_step,
+                        state.get('user_task', ''),
+                        reason,
+                        new_fail_count
+                    )
+                    print(json.dumps({
+                        'action': 'next_step',
+                        'step_id': next_step.get('id'),
+                        'do_prompt': do_prompt,
+                        'fail_count': new_fail_count
+                    }, ensure_ascii=False, indent=2))
+            else:
+                print(json.dumps({'error': f"Next step '{next_step_id}' not found."}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

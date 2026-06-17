@@ -1,72 +1,81 @@
 #!/usr/bin/env python3
 """
-rf-cancel tool - Cancel the current workflow
+rf-cancel tool - Cancel the current workflow.
+Generates a cancellation report and cleans up state.
 """
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 
-def main():
-    # Get paths
-    script_dir = Path(__file__).parent  # tools/rf-cancel
-    tools_dir = script_dir.parent       # tools
-    skill_dir = tools_dir.parent        # ralph-flow
-    state_file = skill_dir / 'state.json'
-    logs_dir = skill_dir / 'logs'
+# Add tools dir to path for rf_lib imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-    # Check if state file exists
-    if not state_file.exists():
-        print(json.dumps({'error': 'No workflow state found.'}, ensure_ascii=False))
-        return
+from rf_lib.paths import get_skill_dir
+from rf_lib.state import read_state, clear_state
+from rf_lib.logging import log_workflow_cancelled, log_error
+from rf_lib.report import (
+    read_step_records, generate_cancel_report
+)
+
+
+def main():
+    skill_dir = get_skill_dir(__file__)
+
+    # Read optional input
+    try:
+        input_data = json.load(sys.stdin)
+    except Exception:
+        input_data = {}
+
+    reason = input_data.get('reason', '用户取消')
 
     # Read state
-    with open(state_file, 'r', encoding='utf-8') as f:
-        state = json.load(f)
+    state = read_state(skill_dir)
+    if not state:
+        print(json.dumps({'error': 'No workflow state found.'}, ensure_ascii=False))
+        return
 
     if not state.get('active', False):
         print(json.dumps({'error': 'No active workflow to cancel.'}, ensure_ascii=False))
         return
 
     workflow_name = state.get('workflow_name', 'unknown')
-    current_step = state.get('current_step', 'unknown')
-    current_phase = state.get('current_phase', 'unknown')
+    current_step_id = state.get('current_step', 'unknown')
+    current_phase = state.get('current_phase', 'do')
     fail_count = state.get('fail_count', 0)
-    user_task = state.get('user_task', '')
 
-    # Create cancellation report
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    report_file = logs_dir / f"cancellation-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    # Log cancellation
+    log_workflow_cancelled(skill_dir, workflow_name, reason)
 
-    report = {
-        'type': 'cancellation',
-        'workflow_name': workflow_name,
-        'current_step': current_step,
-        'current_phase': current_phase,
-        'fail_count': fail_count,
-        'user_task': user_task,
-        'cancelled_at': datetime.now().isoformat()
-    }
-
-    with open(report_file, 'w', encoding='utf-8') as f:
-        json.dump(report, f, ensure_ascii=False, indent=2)
+    # Generate cancellation report
+    step_records = read_step_records(skill_dir)
+    report_path = generate_cancel_report(
+        skill_dir, workflow_name,
+        reason=reason,
+        current_step=current_step_id,
+        current_phase=current_phase,
+        fail_count=fail_count,
+        steps=step_records
+    )
 
     # Clear state
-    new_state = {
-        'active': False,
-        'workflow_name': workflow_name,
-        'cancelled': True,
-        'cancelled_at': datetime.now().isoformat()
-    }
+    clear_state(skill_dir)
 
-    with open(state_file, 'w', encoding='utf-8') as f:
-        json.dump(new_state, f, ensure_ascii=False, indent=2)
-
-    print(json.dumps({
+    # Return result
+    result = {
         'success': True,
         'message': f"Workflow '{workflow_name}' cancelled.",
-        'report': str(report_file)
-    }, ensure_ascii=False, indent=2))
+        'reason': reason,
+        'cancelled_at': {
+            'step': current_step_id,
+            'phase': current_phase,
+            'fail_count': fail_count,
+        },
+        'report': str(report_path),
+    }
+
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
 
 if __name__ == '__main__':
     main()
