@@ -1,0 +1,6 @@
+name: "rf-status"
+description: "查看当前工作流状态。返回工作流名称、当前步骤、阶段、失败次数等信息。"
+parameters:
+  type: object
+  properties: {}
+runner: python

@@ -1,0 +1,6 @@
+name: "rf-continue"
+description: "恢复已暂停的工作流。重置失败计数器并从当前步骤继续执行。"
+parameters:
+  type: object
+  properties: {}
+runner: python

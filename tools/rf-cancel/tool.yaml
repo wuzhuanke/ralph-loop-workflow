@@ -1,0 +1,6 @@
+name: "rf-cancel"
+description: "取消当前工作流。清除状态并生成取消报告。"
+parameters:
+  type: object
+  properties: {}
+runner: python

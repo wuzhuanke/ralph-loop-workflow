@@ -1,0 +1,6 @@
+name: "rf-list"
+description: "列出所有可用的工作流。返回工作流名称和描述。"
+parameters:
+  type: object
+  properties: {}
+runner: python

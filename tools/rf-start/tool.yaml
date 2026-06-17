@@ -1,0 +1,15 @@
+name: "rf-start"
+description: "启动工作流。需要指定工作流名称和任务描述。返回工作流初始状态和第一步指令。"
+parameters:
+  type: object
+  properties:
+    workflow:
+      type: string
+      description: "工作流名称，如 loop、spec"
+    task:
+      type: string
+      description: "任务描述"
+  required:
+    - workflow
+    - task
+runner: python

@@ -1,0 +1,11 @@
+name: "rf-detect"
+description: "检测工作流标记。检测文本中是否包含 <promise>done</promise> 或 <promise-check>true/false</promise-check> 标记。"
+parameters:
+  type: object
+  properties:
+    text:
+      type: string
+      description: "要检测的文本内容"
+  required:
+    - text
+runner: python
