@@ -166,7 +166,7 @@ steps:
 
 ## 自定义工作流
 
-用户可以在 `.trae/ralph-flow/workflows/` 目录下创建自定义工作流 YAML 文件：
+用户可以在 skill 根目录下的 `workflows/` 目录中创建自定义工作流 YAML 文件：
 
 ```yaml
 description: 工作流描述
@@ -207,7 +207,7 @@ steps:
 
 ## 状态文件
 
-工作流状态保存在 `.trae/ralph-flow/state.json`：
+工作流状态保存在 skill 根目录下的 `state.json`：
 
 ```json
 {
@@ -228,16 +228,16 @@ steps:
 }
 ```
 
-状态栈保存在 `.trae/ralph-flow/state_stack.json`（子工作流使用）。
+状态栈保存在 skill 根目录下的 `state_stack.json`（子工作流使用）。
 
 ## 日志与报告
 
-- **执行日志**：`.trae/ralph-flow/logs/execution.log`（JSON 格式结构化日志）
-- **步骤日志**：`.trae/ralph-flow/logs/step_<id>.log`（每个步骤的详细日志）
-- **步骤记录**：`.trae/ralph-flow/step_records.json`（步骤执行历史）
-- **完成报告**：`.trae/ralph-flow/reports/report_<timestamp>.md`
-- **暂停报告**：`.trae/ralph-flow/reports/pause_report_<timestamp>.md`
-- **取消报告**：`.trae/ralph-flow/reports/cancel_report_<timestamp>.md`
+- **执行日志**：`logs/execution.log`（JSON 格式结构化日志）
+- **步骤日志**：`logs/step_<id>.log`（每个步骤的详细日志）
+- **步骤记录**：`step_records.json`（步骤执行历史）
+- **完成报告**：`reports/report_<timestamp>.md`
+- **暂停报告**：`reports/pause_report_<timestamp>.md`
+- **取消报告**：`reports/cancel_report_<timestamp>.md`
 
 ## 重要规则
 
