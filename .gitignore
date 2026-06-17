@@ -12,5 +12,8 @@ __pycache__/
 
 # State
 state.json
+state_stack.json
+step_records.json
 logs/
-artifacts/
+reports/
+.ralpha-loop-workflow/
