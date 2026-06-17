@@ -1,1 +1,1 @@
-# rf_lib - shared library for ralph-flow tools
+# rf_lib - shared library for ralpha-loop-workflow tools

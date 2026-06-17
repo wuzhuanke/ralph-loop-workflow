@@ -1,4 +1,4 @@
-"""Tag detection for ralph-flow tools."""
+"""Tag detection for ralpha-loop-workflow tools."""
 import re
 from typing import Dict, Any, Optional
 

@@ -1,4 +1,4 @@
-"""Path constants and helpers for ralph-flow tools."""
+"""Path constants and helpers for ralpha-loop-workflow tools."""
 from pathlib import Path
 from typing import Optional
 

@@ -1,4 +1,4 @@
-"""Report generation for ralph-flow tools."""
+"""Report generation for ralpha-loop-workflow tools."""
 import json
 from pathlib import Path
 from typing import List, Dict, Any, Optional

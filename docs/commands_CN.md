@@ -124,7 +124,7 @@
 {
   "success": true,
   "message": "Workflow 'loop' cancelled.",
-  "report": ".trae/skills/ralph-flow/logs/cancellation-20260617-231036.json"
+  "report": ".trae/skills/ralpha-loop-workflow/logs/cancellation-20260617-231036.json"
 }
 ```
 
@@ -208,7 +208,7 @@
 
 ## 日志事件
 
-事件以 JSON 格式记录到 `.trae/skills/ralph-flow/logs/` 目录。
+事件以 JSON 格式记录到 `.trae/skills/ralpha-loop-workflow/logs/` 目录。
 
 ### 工作流事件
 
@@ -233,7 +233,7 @@
 
 ## 状态文件
 
-工作流状态保存在 `.trae/skills/ralph-flow/state.json`：
+工作流状态保存在 `.trae/skills/ralpha-loop-workflow/state.json`：
 
 ```json
 {

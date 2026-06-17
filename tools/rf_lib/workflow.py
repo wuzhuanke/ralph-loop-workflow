@@ -1,4 +1,4 @@
-"""Workflow loading and parsing for ralph-flow tools."""
+"""Workflow loading and parsing for ralpha-loop-workflow tools."""
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List

@@ -1,6 +1,6 @@
 # 工作原理
 
-本文档解释 ralph-flow 的内部工作机制。
+本文档解释 ralpha-loop-workflow 的内部工作机制。
 
 ---
 
@@ -98,7 +98,7 @@ sequenceDiagram
 
 ## 状态管理
 
-工作流状态存储在 `.trae/skills/ralph-flow/state.json` 中：
+工作流状态存储在 `.trae/skills/ralpha-loop-workflow/state.json` 中：
 
 ```json
 {
@@ -120,10 +120,10 @@ sequenceDiagram
 
 ## 文件结构
 
-所有生成文件统一放在 `.trae/skills/ralph-flow/` 目录下：
+所有生成文件统一放在 `.trae/skills/ralpha-loop-workflow/` 目录下：
 
 ```
-.trae/skills/ralph-flow/
+.trae/skills/ralpha-loop-workflow/
 ├── SKILL.md              # Skill 定义文件
 ├── state.json            # 工作流状态
 ├── tools/                # 自定义工具

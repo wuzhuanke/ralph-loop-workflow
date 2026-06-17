@@ -13,13 +13,13 @@ steps:
       1. 理解用户需求的核心目标和边界
       2. 分析涉及的模块、组件和功能点
       3. 评估变更影响范围和风险
-      4. 输出 `.ralph-flow/artifacts/proposal.md`：
+      4. 输出 `.ralpha-loop-workflow/artifacts/proposal.md`：
          - 变更概述（为什么做、做什么）
          - 范围与影响（模块、组件、文件）
          - 验收标准（如何验证完成）
       5. 完成后在回复最后一行输出 <promise>done</promise>
     input: 用户提供的任务描述
-    output: .ralph-flow/artifacts/proposal.md
+    output: .ralpha-loop-workflow/artifacts/proposal.md
     check: |
       检查 proposal.md：
       1. 清晰描述了变更原因和目的
@@ -39,7 +39,7 @@ steps:
     do: |
       基于 proposal 编写详细规格文档。
 
-      1. 输出 `.ralph-flow/artifacts/specs.md`
+      1. 输出 `.ralpha-loop-workflow/artifacts/specs.md`
       2. 使用 delta-spec 格式标注变更类型：
          - **[ADDED]** 新增功能
          - **[MODIFIED]** 修改功能
@@ -47,8 +47,8 @@ steps:
       3. 为每个需求点编写验收场景和边界条件
       4. 覆盖正常流程和异常流程
       5. 完成后在回复最后一行输出 <promise>done</promise>
-    input: .ralph-flow/artifacts/proposal.md
-    output: .ralph-flow/artifacts/specs.md
+    input: .ralpha-loop-workflow/artifacts/proposal.md
+    output: .ralpha-loop-workflow/artifacts/specs.md
     check: |
       检查 specs.md：
       1. 所有需求点使用了正确标记（ADDED/MODIFIED/REMOVED）
@@ -68,7 +68,7 @@ steps:
     do: |
       基于 specs 设计技术实现方案。
 
-      输出 `.ralph-flow/artifacts/design.md`，包含：
+      输出 `.ralpha-loop-workflow/artifacts/design.md`，包含：
       - 整体架构与技术选型
       - 模块划分与职责
       - 核心接口和数据结构设计
@@ -77,8 +77,8 @@ steps:
 
       方案需覆盖 specs 中所有需求，避免过度设计。
       完成后在回复最后一行输出 <promise>done</promise>
-    input: .ralph-flow/artifacts/specs.md
-    output: .ralph-flow/artifacts/design.md
+    input: .ralpha-loop-workflow/artifacts/specs.md
+    output: .ralpha-loop-workflow/artifacts/design.md
     check: |
       检查 design.md：
       1. 技术方案覆盖 specs 中所有需求
@@ -98,15 +98,15 @@ steps:
     do: |
       基于 design 拆解为可执行的实现任务清单。
 
-      输出 `.ralph-flow/artifacts/tasks.md`，包含：
+      输出 `.ralpha-loop-workflow/artifacts/tasks.md`，包含：
       - 按模块/层级组织的任务列表
       - 每个任务用 `- [ ]` 标记
       - 任务间依赖关系标注
 
       每个任务应足够小（可独立完成和验证），按合理顺序排列（基础设施优先，业务逻辑在后）。
       完成后在回复最后一行输出 <promise>done</promise>
-    input: .ralph-flow/artifacts/design.md
-    output: .ralph-flow/artifacts/tasks.md
+    input: .ralpha-loop-workflow/artifacts/design.md
+    output: .ralpha-loop-workflow/artifacts/tasks.md
     check: |
       检查 tasks.md：
       1. design 中所有变更点都有对应任务
@@ -134,7 +134,7 @@ steps:
          - 如发现 specs 需要调整，同步更新 specs.md
       5. 每完成一批任务，运行 lint 和 typecheck 等验证命令
       6. 完成后在回复最后一行输出 <promise>done</promise>
-    input: .ralph-flow/artifacts/tasks.md
+    input: .ralpha-loop-workflow/artifacts/tasks.md
     output: 实现的代码文件 + 更新后的 tasks.md
     check: |
       严格审查实现质量：
@@ -167,12 +167,12 @@ steps:
       1. 逐一检查 specs.md 中每个需求点是否已实现
       2. 运行完整测试套件
       3. 运行 lint 和 typecheck
-      4. 输出 `.ralph-flow/artifacts/verification.md`：
+      4. 输出 `.ralpha-loop-workflow/artifacts/verification.md`：
          - 每个需求点的验证结果（通过/未通过）
          - 整体验收结论
       5. 完成后在回复最后一行输出 <promise>done</promise>
     input: specs.md + 实现代码
-    output: .ralph-flow/artifacts/verification.md
+    output: .ralpha-loop-workflow/artifacts/verification.md
     check: |
       检查验收是否通过：
       1. specs.md 中所有需求点被覆盖
@@ -195,13 +195,13 @@ steps:
       1. 确认所有 artifacts 文件为最终状态：
          - proposal.md, specs.md, design.md, tasks.md
          - 如有 verification.md 也一并确认
-      2. 输出 `.ralph-flow/artifacts/summary.md`：
+      2. 输出 `.ralpha-loop-workflow/artifacts/summary.md`：
          - 实现了哪些功能
          - 变更了哪些文件
          - 遗留问题和注意事项
       3. 完成后在回复最后一行输出 <promise>done</promise>
     input: 所有 artifacts 文件和实现代码
-    output: .ralph-flow/artifacts/summary.md
+    output: .ralpha-loop-workflow/artifacts/summary.md
     check: |
       检查归档是否完整：
       1. 所有 artifacts 文件已更新到最终状态

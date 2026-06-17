@@ -10,7 +10,7 @@ def main():
     # Get paths
     script_dir = Path(__file__).parent  # tools/rf-list
     tools_dir = script_dir.parent       # tools
-    skill_dir = tools_dir.parent        # ralph-flow
+    skill_dir = tools_dir.parent        # ralpha-loop-workflow
     workflows_dir = skill_dir / 'workflows'
 
     # Check if workflows directory exists

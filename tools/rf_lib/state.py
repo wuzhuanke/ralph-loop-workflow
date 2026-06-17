@@ -1,4 +1,4 @@
-"""State management for ralph-flow tools."""
+"""State management for ralpha-loop-workflow tools."""
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List

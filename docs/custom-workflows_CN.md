@@ -1,6 +1,6 @@
 # 自定义工作流
 
-在 `.trae/skills/ralph-flow/workflows/` 目录下创建 `.yaml` 文件即可定义自己的工作流。
+在 `.trae/skills/ralpha-loop-workflow/workflows/` 目录下创建 `.yaml` 文件即可定义自己的工作流。
 
 ---
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Integration tests for ralph-flow tools (rf-start, rf-check, rf-detect, rf-advance, rf-status, rf-cancel, rf-continue)."""
+"""Integration tests for ralpha-loop-workflow tools (rf-start, rf-check, rf-detect, rf-advance, rf-status, rf-cancel, rf-continue)."""
 import json
 import sys
 import os
@@ -478,7 +478,7 @@ def test_full_workflow():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("ralph-flow Integration Tests")
+    print("ralpha-loop-workflow Integration Tests")
     print("=" * 60)
 
     test_rf_start()

@@ -1,4 +1,4 @@
-"""Structured logging for ralph-flow tools."""
+"""Structured logging for ralpha-loop-workflow tools."""
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any

@@ -1,10 +1,10 @@
-# ralph-flow 文档
+# ralpha-loop-workflow 文档
 
-欢迎阅读 ralph-flow 文档。本指南帮助你充分利用 Trae-CN 的工作流自动化功能。
+欢迎阅读 ralpha-loop-workflow 文档。本指南帮助你充分利用 Trae-CN 的工作流自动化功能。
 
 ## 快速开始
 
-第一次使用 ralph-flow？从这里开始：
+第一次使用 ralpha-loop-workflow？从这里开始：
 
 1. [安装方式](../README.md#安装方式) — 了解目录结构
 2. [快速开始](../README.md#快速开始) — 运行你的第一个工作流
