@@ -1,6 +1,6 @@
 ---
-name: "ralph-flow"
-description: "工作流自动化执行引擎。支持多步骤工作流、独立验证、失败重试。当用户需要执行复杂任务、需要验证确认、或提到工作流/ralph-flow/ralphflow时调用。"
+name: "ralpha-loop-workflow"
+description: "工作流自动化执行引擎。支持多步骤工作流、独立验证、失败重试。当用户需要执行复杂任务、需要验证确认、或提到工作流/ralpha-loop-workflow时调用。"
 mode: agent
 context: same_type
 custom-tools:
@@ -29,33 +29,36 @@ custom-tools:
 每个工作流步骤包含两个阶段：
 
 ### DO 阶段（执行）
+
 - 执行当前步骤描述的任务
 - 完成后输出 `<promise>done</promise>` 标记
 - 系统自动进入 CHECK 阶段
 
 ### CHECK 阶段（检查）
+
 - 使用**独立会话**检查任务是否按要求完成
 - 通过：输出 `<promise-check>true</promise-check>`，进入下一步骤
 - 不通过：输出 `<promise-check>false</promise-check>` 并说明原因，重新执行 DO 阶段
 
 ## 可用工具
 
-| 工具 | 功能 |
-|------|------|
-| `rf-start` | 启动工作流（支持子工作流、session 跟踪） |
-| `rf-status` | 查看当前状态（含步骤详情、子工作流深度） |
-| `rf-continue` | 恢复暂停的工作流（含失败上下文） |
-| `rf-cancel` | 取消工作流（生成取消报告） |
-| `rf-list` | 列出可用工作流 |
-| `rf-detect` | 检测工作流标记并自动推进状态 |
-| `rf-check` | 生成对抗性检查提示（供独立子 agent 使用） |
-| `rf-advance` | 显式推进状态机（pass/fail 路由） |
+| 工具            | 功能                       |
+| ------------- | ------------------------ |
+| `rf-start`    | 启动工作流（支持子工作流、session 跟踪） |
+| `rf-status`   | 查看当前状态（含步骤详情、子工作流深度）     |
+| `rf-continue` | 恢复暂停的工作流（含失败上下文）         |
+| `rf-cancel`   | 取消工作流（生成取消报告）            |
+| `rf-list`     | 列出可用工作流                  |
+| `rf-detect`   | 检测工作流标记并自动推进状态           |
+| `rf-check`    | 生成对抗性检查提示（供独立子 agent 使用） |
+| `rf-advance`  | 显式推进状态机（pass/fail 路由）    |
 
 ## 工作流程
 
 ### 1. 启动工作流
 
 当用户请求启动工作流时：
+
 1. 使用 `rf-list` 工具查看可用工作流
 2. 确认工作流名称和任务描述
 3. 使用 `rf-start` 启动工作流
@@ -150,6 +153,7 @@ steps:
 ### spec - 规范驱动开发流水线
 
 七步流水线，从提议到归档：
+
 1. Propose - 需求分析与方案提议
 2. Specs - 详细规格定义
 3. Design - 技术方案设计
