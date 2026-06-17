@@ -38,6 +38,28 @@ npx skills add wuzhuanke/ralpha-loop-workflow --force
 - **loop**: 循环执行
 - **spec**: 规范驱动开发流水线
 
+## 使用示例
+
+### 启动 loop 工作流
+
+```
+用户：/ralpha-loop-workflow 用 JWT 和 refresh token 实现用户认证模块
+
+助手：我来启动 loop 工作流来执行这个任务。
+[调用 rf-start 工具]
+工作流已启动，现在开始执行 DO 阶段...
+```
+
+### 启动 spec 工作流
+
+```
+用户：/ralpha-loop-workflow spec 添加 OAuth2 用户认证功能
+
+助手：这是一个需要规范开发流程的任务，我来启动 spec 工作流。
+[调用 rf-start 工具]
+工作流已启动，第一步：需求分析与方案提议...
+```
+
 ## 文档
 
 - [命令参考](docs/commands_CN.md)
